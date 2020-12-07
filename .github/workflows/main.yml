@@ -17,7 +17,7 @@ jobs:
       - name: Make bundle
         run: mkdir staging && cp target/*.jar staging
       - name: Share bundle
-        uses: actions/upload-artifacts@latest
+        uses: actions/upload-artifact@v2
         with:
           name: Package
           path: staging
