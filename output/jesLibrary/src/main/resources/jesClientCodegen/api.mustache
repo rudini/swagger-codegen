@@ -1,0 +1,145 @@
+package {{package}};
+
+import ch.mobi.jes.common.JesBean;
+import ch.mobi.jes.common.lang.JesBusinessException;
+import ch.mobi.jes.common.logging.MobiLog;
+import ch.mobi.jes.jaxrs.exception.converter.JesExceptionConverter;
+import ch.mobi.jes.jaxrs.topology.Topology;
+
+import javax.inject.Inject;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Form;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.Response;
+
+{{#imports}}import {{import}};
+{{/imports}}
+
+{{^fullJavaUtil}}
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+{{/fullJavaUtil}}
+
+@JesBean
+{{#operations}}
+public class {{classname}} {
+
+    private Topology topology;
+    private Client client;
+    private MobiLog logger;
+    private JesExceptionConverter jesExceptionConverter;
+    private String SERVICE_KEY = "{{{basePath}}}"; // Please replace this by your own Key!!
+
+    @Inject
+    public {{classname}}(Topology topology, Client client, MobiLog logger, JesExceptionConverter jesExceptionConverter) {
+        this.topology = topology;
+        this.client = client;
+        this.logger = logger;
+        this.jesExceptionConverter = jesExceptionConverter;
+    }
+
+    {{#operation}}
+    /**
+    * {{summary}}
+    * {{notes}}{{#allParams}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{{.}}}{{/defaultValue}}){{/required}}{{/allParams}}{{#returnType}}
+    * @return {{{returnType}}}{{/returnType}}
+    * @throws JesException if fails to make API call
+    {{#isDeprecated}}
+    * @deprecated
+    {{/isDeprecated}}
+    {{#externalDocs}}
+    * {{description}}
+    * @see <a href="{{url}}">{{summary}} Documentation</a>
+    {{/externalDocs}}
+    */
+    {{#isDeprecated}}
+    @Deprecated
+    {{/isDeprecated}}
+    public {{#returnType}}{{{returnType}}} {{/returnType}}{{^returnType}}void {{/returnType}}{{operationId}}({{#allParams}}{{{dataType}}} {{paramName}}{{#hasMore}}, {{/hasMore}}{{/allParams}}) {
+
+        {{#allParams}}{{#required}}// verify the required parameter '{{paramName}}' is set
+        if({{paramName}} == null) {
+            throw JesBusinessException
+                .newBuilder("Missing the required parameter '{{paramName}}' when calling {{operationId}}")
+                .build();
+        }{{/required}}{{/allParams}}
+
+        Invocation.Builder builder = getWebTarget()
+            .path("{{{path}}}")
+            {{#pathParams}}
+            .resolveTemplate("{{baseName}}", {{{paramName}}})
+            {{/pathParams}}
+            {{#queryParams}}
+            .queryParam("{{baseName}}", {{{paramName}}}{{#collectionFormat}}.toArray(){{/collectionFormat}})
+            {{/queryParams}}
+            .request(){{^headerParams}};{{/headerParams}}
+            {{#headerParams}}
+            .header("{{baseName}}", {{paramName}});
+            {{/headerParams}}
+
+        try {
+            {{#returnType}}return {{/returnType}}this.callHttpMethod(
+                builder,
+                "{{httpMethod}}",
+                {{#bodyParams}}Entity.json({{{paramName}}}){{/bodyParams}}{{^bodyParams}}null{{/bodyParams}},
+                {{#returnType}}{{^returnSimpleType}}new GenericType<>(){}{{/returnSimpleType}}{{#returnSimpleType}}{{{returnType}}}.class{{/returnSimpleType}}{{/returnType}}{{^returnType}}Void.class{{/returnType}});
+        } catch(WebApplicationException e) {
+            throw jesExceptionConverter.of(e);
+        }
+    }
+
+    {{/operation}}
+
+    private <T> T callHttpMethod(Invocation.Builder builder, String httpMethod, Entity<?> entity, GenericType<T> responseType) {
+        switch(httpMethod) {
+            case "GET":
+                return builder.get(responseType);
+            case "POST":
+                return builder.post(entity, responseType);
+            case "PUT":
+                return builder.put(entity, responseType);
+            case "DELETE":
+                return builder.delete(responseType);
+            case "HEAD":
+                invokeHeadRequest(builder);
+            default:
+                throw new WebApplicationException("Not supported httpMethod found: " + httpMethod);
+        }
+    }
+
+    private <T> T callHttpMethod(Invocation.Builder builder, String httpMethod, Entity<?> entity, Class<T> responseType) {
+        return this.callHttpMethod(builder, httpMethod, entity, new GenericType<T>(responseType));
+    }
+
+    private void invokeHeadRequest(Invocation.Builder builder) {
+        Response response = null;
+
+        try {
+            response = builder.head();
+            if (!Response.Status.Family.SUCCESSFUL.equals(Response.Status.fromStatusCode(response.getStatus()).getFamily())) {
+                throw new WebApplicationException("Unsuccessful ping to " + getWebTarget() + " / Response status code: " + response.getStatus());
+            }
+        }
+        finally {
+            if (response != null) {
+                response.close();
+            }
+        }
+    }
+
+    private WebTarget getWebTarget() {
+        return this.client.target(this.getBaseUrl()).path("rest");
+    }
+
+    private String getBaseUrl() {
+        this.topology.getServiceTarget(SERVICE_KEY);
+    }
+}
+{{/operations}}
