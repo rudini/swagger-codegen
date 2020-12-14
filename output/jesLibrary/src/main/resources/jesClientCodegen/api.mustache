@@ -109,6 +109,7 @@ public class {{classname}} {
                 return builder.delete(responseType);
             case "HEAD":
                 invokeHeadRequest(builder);
+                return null;
             default:
                 throw new WebApplicationException("Not supported httpMethod found: " + httpMethod);
         }
@@ -134,8 +135,8 @@ public class {{classname}} {
         }
     }
 
-    private WebTarget getWebTarget() {
-        return this.client.target(this.getBaseUrl()).path("rest");
+    public WebTarget getWebTarget() {
+        return this.client.target(this.getBaseUrl());
     }
 
     private String getBaseUrl() {
