@@ -2,7 +2,6 @@ package {{package}};
 
 import ch.mobi.jes.common.JesBean;
 import ch.mobi.jes.common.lang.JesBusinessException;
-import ch.mobi.jes.common.logging.MobiLog;
 import ch.mobi.jes.jaxrs.exception.converter.JesExceptionConverter;
 import ch.mobi.jes.jaxrs.topology.Topology;
 
@@ -24,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import static java.util.Objects.isNull;
 {{/fullJavaUtil}}
 
 @JesBean
@@ -32,7 +32,6 @@ public class {{classname}} {
 
     private Topology topology;
     private Client client;
-    private MobiLog logger;
     private JesExceptionConverter jesExceptionConverter;
     private String SERVICE_KEY = "{{{basePath}}}"; // Please replace this by your own Key!!
 
@@ -124,7 +123,7 @@ public class {{classname}} {
 
         try {
             response = builder.head();
-            if (!Response.Status.Family.SUCCESSFUL.equals(Response.Status.fromStatusCode(response.getStatus()).getFamily())) {
+            if (!isNull(response) && !Response.Status.Family.SUCCESSFUL.equals(Response.Status.fromStatusCode(response.getStatus()).getFamily())) {
                 throw new WebApplicationException("Unsuccessful ping to " + getWebTarget() + " / Response status code: " + response.getStatus());
             }
         }
